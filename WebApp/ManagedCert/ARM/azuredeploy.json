@@ -1,0 +1,76 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "customDomain": { 
+        "type": "string",
+        "defaultValue": "hostname.domain.com" 
+      },
+      "utcValue": {
+        "type": "string",
+        "defaultValue": "[utcNow('u')]" 
+      }
+    },
+    "variables": {
+      "resourceGroupPrefix": "[toLower(resourceGroup().name)]",
+      "appServicePlanName": "[concat(variables('resourceGroupPrefix'), '-asp')]",
+      "appServicePlanId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+      "AppServiceName": "[concat(variables('resourceGroupPrefix'), '-as')]"
+      "CertificateName": "[concat(parameters('customDomain'), '-managedcert')]"
+    },
+    "resources": [    
+    {
+      "comments": "Hostname binding for FQDN",
+      "type": "Microsoft.Web/sites/hostNameBindings",
+      "apiVersion": "2018-11-01",
+      "name": "[concat(variables('AppServiceName'), '/', parameters('customDomain'))]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+      ],
+      "properties": {
+        "siteName": "[variables('AppServiceName')]",
+        "hostNameType": "Verified"
+      }
+    },
+    {
+      "apiVersion": "2019-08-01",
+      "location": "[resourceGroup().location]",
+      "name": "[variables('CertificateName')]",
+      "type": "Microsoft.Web/certificates",
+      "properties": {
+        "serverFarmId": "[variables('appServicePlanId')]",
+        "canonicalName": "[parameters('customDomain')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Web/sites/',variables('AppServiceName'),'/hostnameBindings/',parameters('customDomain'))]"
+      ]
+    },
+    {
+      "apiVersion": "2015-01-01",
+      "name": "[concat('nestedCertBinding-', uniqueString(parameters('utcValue')))]",
+      "type": "Microsoft.Resources/deployments",
+      "dependsOn": [
+        "[concat('Microsoft.Web/certificates/',variables('CertificateName'))]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": [
+            {
+              "type": "Microsoft.Web/sites/hostnameBindings",
+              "name": "[concat(variables('AppServiceName'), '/', parameters('customDomain'))]",
+              "apiVersion": "2018-11-01",
+              "location": "[resourceGroup().location]",
+              "properties": {
+                "sslState": "SniEnabled",
+                "thumbprint": "[reference(resourceId('Microsoft.Web/certificates', variables('CertificateName'))).Thumbprint]"
+              }
+            }
+          ]
+        }
+      }
+    }
+    ]
+}
