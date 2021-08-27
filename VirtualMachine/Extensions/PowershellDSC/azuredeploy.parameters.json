@@ -1,0 +1,25 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "configurationFunction": { 
+            "value": "dsc.ps1\\VMConfig"
+            },
+        "wmfVersion": {
+            "value": "latest"
+        },
+        "privacy": {
+            "value": ""
+        },
+        "version": {
+            "value": "2.83",
+            "type": "String"
+        },
+        "autoUpdate": {
+            "value": false
+        },
+        "signedExpiry": {
+            "value": "2021-08-28T00:00:01Z"
+        }
+    }
+}
