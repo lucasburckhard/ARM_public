@@ -1,1 +1,64 @@
-
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "configurationFunction": { 
+            "defaultValue": "dsc.ps1\\VMConfig",
+            "type": "String" 
+            },
+        "wmfVersion": {
+            "defaultValue": "latest",
+            "allowedValues": [ "4.0", "5.0", "5.1", "latest" ],
+            "type": "String"
+        },
+        "privacy": {
+            "defaultValue": "",
+            "type": "String"
+        },
+        "version": {
+            "defaultValue": "2.83",
+            "type": "String"
+        },
+        "autoUpdate": {
+            "defaultValue": false,
+            "type": "Bool"
+        },
+        "signedExpiry": {
+            "type": "string",
+            "defaultValue": "2021-11-01T00:00:01Z"
+        }
+    },
+    "variables": {
+        "namePrefix": "[resourceGroup().tags.NamingPrefix]",
+        "storageName": "[toLower(concat(resourceGroup().tags.namingPrefix, 'sa'))]",
+        "accountSasProperties": {
+            "signedServices": "b",
+            "signedPermission": "r",
+            "signedExpiry": "[parameters('signedExpiry')]",
+			"signedResourceTypes": "o"
+        },
+        "vmName": "[concat(variables('namePrefix'),'vm')]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2015-06-15",
+            "name": "[concat(variables('vmName'),'/Microsoft.Powershell.DSC')]",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "publisher": "Microsoft.Powershell",
+                "type": "DSC",
+                "typeHandlerVersion": "[parameters('version')]",
+                "autoUpgradeMinorVersion": "[parameters('autoUpdate')]",
+                "settings": {
+                    "ModulesUrl": "[concat('https://',variables('storageName'), '.blob.core.windows.net/dsc/dsc.zip?', listAccountSas(resourceId(resourceGroup().name,'Microsoft.Storage/storageAccounts', variables('storageName')), '2018-07-01', variables('accountSasProperties')).accountSasToken)]",
+                    "ConfigurationFunction": "[parameters('configurationFunction')]",
+                    "Properties": "",
+                    "WmfVersion": "[parameters('wmfVersion')]",
+                    "Privacy": { "DataCollection": "[parameters('privacy')]" }
+                },
+                "protectedSettings": { "DataBlobUri": "" }
+            }
+        }
+    ]
+}
