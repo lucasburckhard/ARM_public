@@ -1,7 +1,7 @@
 Configuration VMConfig {
 
     Import-DscResource -ModuleName PsDesiredStateConfiguration
-   
+
     Node 'localhost' {
 
         File TempFolder {
@@ -24,6 +24,43 @@ Configuration VMConfig {
             Type = 'Directory'
             Ensure = 'Present'
             DependsOn = '[Script]InitializeDiskDrives'
+        }
+
+        Script ASPEnvironmentVariable {
+            TestScript = {
+                $e=$env:COMPUTERNAME
+                if($e.Substring(4,1) -like "d" -or $e.Substring(4,1) -like "x"){([System.Environment]::GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Machine") -like "dev")}
+                if($e.Substring(4,1) -like "q" -or $e.Substring(4,1) -like "s"){([System.Environment]::GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Machine") -like "test")}
+                if($e.Substring(4,1) -like "p"){([System.Environment]::GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Machine") -like "prod")}
+            }
+            SetScript = {
+                $e=$env:COMPUTERNAME
+                if($e.Substring(4,1) -like "d" -or $e.Substring(4,1) -like "x"){[System.Environment]::SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT","dev", "Machine")}
+                if($e.Substring(4,1) -like "q" -or $e.Substring(4,1) -like "s"){[System.Environment]::SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT","test", "Machine")}
+                if($e.Substring(4,1) -like "p"){[System.Environment]::SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT","prod", "Machine")}
+
+            }
+            GetScript = {@{Result = "ASPEnvironmentVariable"}}
+        }
+
+        Script AddLocalGroupMember {
+            TestScript = {
+               ((Get-LocalGroupMember -Group "IIS_IUSRS" | ?{$_.name -like "DomainName\svcName"}) -ne $null)
+            }
+            SetScript = {
+                Add-LocalGroupMember -Group "IIS_IUSRS" -Member "PHIBRED\CSNAPsvc"
+            }
+            GetScript = {@{Result = "AddLocalGroupMember"}}
+        }
+
+        Script AddTFSGroupMember {
+            TestScript = {
+               ((Get-LocalGroupMember -Group "IIS_IUSRS" | ?{$_.name -like "DomainName\tfsName"}) -ne $null)
+            }
+            SetScript = {
+                Add-LocalGroupMember -Group "IIS_IUSRS" -Member "DomainName\tfsbuild"
+            }
+            GetScript = {@{Result = "AddTFSGroupMember"}}
         }
 
         Script InitializeDiskDrives {
@@ -51,7 +88,7 @@ Configuration VMConfig {
                 Test-Path "\\$env:computername\temp"
             }
             SetScript = {
-                New-SmbShare -Name "temp" -Path "F:\temp" -FullAccess "BUILTIN\Administrators", "NT Authority\SYSTEM"
+                New-SmbShare -Name "temp" -Path "F:\temp" -FullAccess "BUILTIN\Administrators", "NT Authority\SYSTEM", "BUILTIN\IIS_IUSRS"
             }
             GetScript = {@{Result = "InitializeSMBTempShare"}}
             DependsOn = '[File]CreateSMBTempFolder'
@@ -66,6 +103,28 @@ Configuration VMConfig {
             }
             GetScript = {@{Result = "InitializeSMBFiledropShare"}}
             DependsOn = '[File]CreateSMBFiledropFolder'
+        }
+
+        Script GrantSMBFiledropShareAccess {
+            TestScript = {
+                ((Get-SmbShareAccess -Name 'Filedrop').AccountName -contains 'BUILTIN\IIS_IUSRS')
+            }
+            SetScript = {
+                Grant-SmbShareAccess -Name 'Filedrop' -AccountName "BUILTIN\IIS_IUSRS" -AccessRight Full -Force
+            }
+            GetScript = {@{Result = "GrantSMBFiledropShareAccess"}}
+            DependsOn = '[Script]InitializeSMBFiledropShare'
+        }
+
+        Script GrantSMBtempShareAccess {
+            TestScript = {
+                ((Get-SmbShareAccess -Name 'temp').AccountName -contains 'BUILTIN\IIS_IUSRS')
+            }
+            SetScript = {
+                Grant-SmbShareAccess -Name 'temp' -AccountName "BUILTIN\IIS_IUSRS" -AccessRight Full -Force
+            }
+            GetScript = {@{Result = "GrantSMBtempShareAccess"}}
+            DependsOn = '[Script]InitializeSMBTempShare'
         }
         
         Script DownloadDotnetHosting {
