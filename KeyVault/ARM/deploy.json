@@ -1,0 +1,74 @@
+    {
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {},
+  "functions": [],
+  "variables": {
+    "tenantId": "[subscription().tenantId]",
+    "location": "[resourceGroup().location]",
+    "namePrefix": "[resourceGroup().tags.NamingPrefix]",
+    "vmName": "[concat(variables('namePrefix'), 'WS01')]",
+    "keyVaultName": "[format('{0}-kv', resourceGroup().name)]",
+    "objectId": "",
+    "uniqueResourceNameBase": "[uniqueString(resourceGroup().id, variables('location'), deployment().name)]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2018-06-01",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('vmName')]",
+      "location": "[resourceGroup().location]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2019-09-01",
+      "name": "[variables('keyVaultName')]",
+      "location": "[variables('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', variables('uniqueResourceNameBase'))]"
+      ],
+      "properties": {
+        "enabledForDeployment": true,
+        "enabledForTemplateDeployment": true,
+        "enabledForDiskEncryption": false,
+        "enableSoftDelete": false,
+        "tenantId": "[variables('tenantId')]",
+        "accessPolicies": [
+          {
+            "tenantId": "[variables('tenantId')]",
+            "objectId": "[reference(resourceId('Microsoft.Compute/virtualMachines', variables('uniqueResourceNameBase')),'2019-08-01', 'full').identity.principalId]",
+            "permissions": {
+              "secrets": [
+                "list",
+                "get",
+                "delete",
+                "set"
+              ]
+            }
+          },
+          {
+            "tenantId": "[variables('tenantId')]",
+            "objectId": "[variables('objectId')]",
+            "permissions": {
+              "secrets": [
+                "list",
+                "get",
+                "delete",
+                "set"
+              ]
+            }
+          }
+        ],
+        "sku": {
+          "name": "standard",
+          "family": "A"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}
