@@ -1,1 +1,5 @@
-  This ARM template will enable Virtual Machine Insights, but the Log analytics workspace will need to already exist and the template require an update to the WorkspaceResourceId if the log analytics workspace is located in a different subsription or resource group than the virtual machine.
+If a log analytics workspace resource is already available and VMInsights is already configured on that resource, then values can be placed into VMInsights.json file from that resource and that will be the only template that you will need.  Otherwise, deploy in this order:
+
+Log Analytics Workspace
+Log Analytics Workspace VM Insights
+VM Insights
