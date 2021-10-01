@@ -1,0 +1,28 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+    },
+    "variables": {
+        "namePrefix": "[resourceGroup().tags.Prefix]",
+        "vmName": "[concat(variables('namePrefix'),'ws01')]",
+        "workspaceResourceId": "[concat('/subscriptions/', subscription().id, '/resourcegroups/', resourceGroup().name, '/providers/microsoft.operationalinsights/workspaces/',variables('vmName'),'doiw')]"
+    },
+    "resources": [
+        {
+          "type": "Microsoft.OperationsManagement/solutions",
+          "name": "VMInsights('diow')",
+          "apiVersion": "2015-11-01-preview",
+          "location": "eastus",
+          "properties": {
+             "workspaceResourceId": "[variables('WorkspaceResourceId')]"
+          },
+          "plan": {
+            "name": "[concat('VMInsights', '(', split(variables('workspaceResourceId'),'/')[8], ')')]",
+            "product": "[concat('OMSGallery/', 'VMInsights')]",
+            "promotionCode": "",
+            "publisher": "Microsoft"
+          }
+        }
+    ]
+}
