@@ -1,0 +1,1 @@
+  This ARM template will enable Virtual Machine Insights, but the Log analytics workspace will need to already exist and the template requires updates if the log analytics workspace is located in a different subsription or resource group than the virtual machine.
